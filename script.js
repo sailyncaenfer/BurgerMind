@@ -143,58 +143,62 @@ function applyState(state) {
 
 // --- TRIVIAL CLUE DETECTION ---
 
-function getPossibleValues(puzzle, targetR, targetC, rTots, cTots) {
-    // Count how many times each digit appears in the puzzle, excluding the target cell
-    const globalCounts = { 1: 0, 2: 0, 3: 0, 4: 0 };
-    for (let r = 0; r < SIZE; r++)
-        for (let c = 0; c < SIZE; c++)
-            if (puzzle[r][c] !== 0 && !(r === targetR && c === targetC))
-                globalCounts[puzzle[r][c]]++;
-
-    const possible = new Set();
-
-    for (let candidate = 1; candidate <= 4; candidate++) {
-        // Each digit appears exactly 4 times in a complete grid
-        if (globalCounts[candidate] >= 4) continue;
-
-        // Row check: sum of other filled cells in this row
-        let rowSum = 0, rowEmpty = 0;
-        for (let c = 0; c < SIZE; c++) {
-            if (c === targetC) continue;
-            if (puzzle[targetR][c] !== 0) rowSum += puzzle[targetR][c];
-            else rowEmpty++;
-        }
-        const rowPartial = rowSum + candidate;
-        if (rowPartial > rTots[targetR]) continue;
-        // If no other empty cells in the row, the total must match exactly
-        if (rowEmpty === 0 && rowPartial !== rTots[targetR]) continue;
-
-        // Column check: sum of other filled cells in this column
-        let colSum = 0, colEmpty = 0;
-        for (let r = 0; r < SIZE; r++) {
-            if (r === targetR) continue;
-            if (puzzle[r][targetC] !== 0) colSum += puzzle[r][targetC];
-            else colEmpty++;
-        }
-        const colPartial = colSum + candidate;
-        if (colPartial > cTots[targetC]) continue;
-        // If no other empty cells in the column, the total must match exactly
-        if (colEmpty === 0 && colPartial !== cTots[targetC]) continue;
-
-        possible.add(candidate);
+// Count valid arrangements to fill emptyCells slots with digits summing to remaining,
+// respecting global digit counts (each digit used exactly 4 times across the whole grid).
+function countLineArrangements(emptyCells, remaining, globalCounts) {
+    if (emptyCells === 0) return remaining === 0 ? 1 : 0;
+    let total = 0;
+    for (let d = 1; d <= 4; d++) {
+        if (globalCounts[d] >= 4) continue;  // digit exhausted globally
+        if (d > remaining) continue;          // would overshoot the target
+        globalCounts[d]++;
+        total += countLineArrangements(emptyCells - 1, remaining - d, globalCounts);
+        globalCounts[d]--;
+        if (total > 1) return total;          // early exit — only need to know if > 1
     }
-
-    return possible;
+    return total;
 }
 
 function hasTrivialClue(puzzle, rTots, cTots) {
+    const globalCounts = { 1: 0, 2: 0, 3: 0, 4: 0 };
+    for (let r = 0; r < SIZE; r++)
+        for (let c = 0; c < SIZE; c++)
+            if (puzzle[r][c] !== 0) globalCounts[puzzle[r][c]]++;
+
+    // Check each row
     for (let r = 0; r < SIZE; r++) {
+        let emptyCells = 0, clueSum = 0;
         for (let c = 0; c < SIZE; c++) {
-            // Check every cell — clue or blank — if its value is immediately forced
-            const possible = getPossibleValues(puzzle, r, c, rTots, cTots);
-            if (possible.size === 1) return true;
+            if (puzzle[r][c] === 0) emptyCells++;
+            else clueSum += puzzle[r][c];
         }
+        if (emptyCells === 0) continue;
+        // Temporarily remove this row's clues so countLineArrangements sees
+        // only what's globally available for the unfilled slots
+        for (let c = 0; c < SIZE; c++)
+            if (puzzle[r][c] !== 0) globalCounts[puzzle[r][c]]--;
+        const arrangements = countLineArrangements(emptyCells, rTots[r] - clueSum, globalCounts);
+        for (let c = 0; c < SIZE; c++)
+            if (puzzle[r][c] !== 0) globalCounts[puzzle[r][c]]++;
+        if (arrangements === 1) return true;
     }
+
+    // Check each column
+    for (let c = 0; c < SIZE; c++) {
+        let emptyCells = 0, clueSum = 0;
+        for (let r = 0; r < SIZE; r++) {
+            if (puzzle[r][c] === 0) emptyCells++;
+            else clueSum += puzzle[r][c];
+        }
+        if (emptyCells === 0) continue;
+        for (let r = 0; r < SIZE; r++)
+            if (puzzle[r][c] !== 0) globalCounts[puzzle[r][c]]--;
+        const arrangements = countLineArrangements(emptyCells, cTots[c] - clueSum, globalCounts);
+        for (let r = 0; r < SIZE; r++)
+            if (puzzle[r][c] !== 0) globalCounts[puzzle[r][c]]++;
+        if (arrangements === 1) return true;
+    }
+
     return false;
 }
 
