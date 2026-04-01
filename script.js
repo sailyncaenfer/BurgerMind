@@ -7,7 +7,7 @@ let rowTotals = [0, 0, 0, 0];
 let colTotals = [0, 0, 0, 0];
 
 let historyStack = [];
-let redoStack = []; // New Redo Stack
+let redoStack = [];
 
 let puzzleBuffer = [];
 const BUFFER_MAX = 5;
@@ -26,13 +26,11 @@ function init() {
 }
 
 function handleKeyDown(e) {
-    // Undo (Ctrl + Z)
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
         e.preventDefault();
         undo();
         return;
     }
-    // Redo (Ctrl + Y)
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
         e.preventDefault();
         redo();
@@ -95,15 +93,11 @@ function saveState() {
     };
     historyStack.push(JSON.stringify(currentState));
     if (historyStack.length > 50) historyStack.shift();
-    
-    // CRITICAL: Clear redo stack when a new action is taken
     redoStack = [];
 }
 
 function undo() {
     if (historyStack.length === 0) return;
-    
-    // Save current state to redo stack before moving back
     const currentState = {
         rowTotals: [...rowTotals], 
         colTotals: [...colTotals],
@@ -114,15 +108,12 @@ function undo() {
         }))
     };
     redoStack.push(JSON.stringify(currentState));
-
     const lastState = JSON.parse(historyStack.pop());
     applyState(lastState);
 }
 
 function redo() {
     if (redoStack.length === 0) return;
-
-    // Save current state to history stack before moving forward
     const currentState = {
         rowTotals: [...rowTotals], 
         colTotals: [...colTotals],
@@ -133,7 +124,6 @@ function redo() {
         }))
     };
     historyStack.push(JSON.stringify(currentState));
-
     const nextState = JSON.parse(redoStack.pop());
     applyState(nextState);
 }
@@ -149,6 +139,64 @@ function applyState(state) {
         cells[i].querySelectorAll(".pencil div").forEach((p, pi) => p.innerText = data.pencils[pi]);
     });
     checkGrid();
+}
+
+// --- TRIVIAL CLUE DETECTION ---
+
+function getPossibleValues(puzzle, targetR, targetC, rTots, cTots) {
+    // Count how many times each digit appears in the puzzle, excluding the target cell
+    const globalCounts = { 1: 0, 2: 0, 3: 0, 4: 0 };
+    for (let r = 0; r < SIZE; r++)
+        for (let c = 0; c < SIZE; c++)
+            if (puzzle[r][c] !== 0 && !(r === targetR && c === targetC))
+                globalCounts[puzzle[r][c]]++;
+
+    const possible = new Set();
+
+    for (let candidate = 1; candidate <= 4; candidate++) {
+        // Each digit appears exactly 4 times in a complete grid
+        if (globalCounts[candidate] >= 4) continue;
+
+        // Row check: sum of other filled cells in this row
+        let rowSum = 0, rowEmpty = 0;
+        for (let c = 0; c < SIZE; c++) {
+            if (c === targetC) continue;
+            if (puzzle[targetR][c] !== 0) rowSum += puzzle[targetR][c];
+            else rowEmpty++;
+        }
+        const rowPartial = rowSum + candidate;
+        if (rowPartial > rTots[targetR]) continue;
+        // If no other empty cells in the row, the total must match exactly
+        if (rowEmpty === 0 && rowPartial !== rTots[targetR]) continue;
+
+        // Column check: sum of other filled cells in this column
+        let colSum = 0, colEmpty = 0;
+        for (let r = 0; r < SIZE; r++) {
+            if (r === targetR) continue;
+            if (puzzle[r][targetC] !== 0) colSum += puzzle[r][targetC];
+            else colEmpty++;
+        }
+        const colPartial = colSum + candidate;
+        if (colPartial > cTots[targetC]) continue;
+        // If no other empty cells in the column, the total must match exactly
+        if (colEmpty === 0 && colPartial !== cTots[targetC]) continue;
+
+        possible.add(candidate);
+    }
+
+    return possible;
+}
+
+function hasTrivialClue(puzzle, rTots, cTots) {
+    for (let r = 0; r < SIZE; r++) {
+        for (let c = 0; c < SIZE; c++) {
+            if (puzzle[r][c] === 0) continue;
+            // Check if this clue's value is the only arithmetically valid option
+            const possible = getPossibleValues(puzzle, r, c, rTots, cTots);
+            if (possible.size === 1) return true;
+        }
+    }
+    return false;
 }
 
 // --- GENERATION & UI ---
@@ -178,7 +226,8 @@ function generateMinimalPuzzleAsync(callback) {
         let finalPuzzle = minimizeDFS(puzzle, getShuffledCoords(), rTots, cTots);
         let clueCount = 0;
         for(let r=0; r<SIZE; r++) for(let c=0; c<SIZE; c++) if(finalPuzzle[r][c] !== 0) clueCount++;
-        if (clueCount <= MAX_CLUES_HARD) {
+        // Reject if too many clues OR if any clue is trivially deducible
+        if (clueCount <= MAX_CLUES_HARD && !hasTrivialClue(finalPuzzle, rTots, cTots)) {
             callback({ puzzle: finalPuzzle, rTots, cTots });
         } else {
             generateMinimalPuzzleAsync(callback);
@@ -235,12 +284,17 @@ function generateHardPuzzle() {
     saveState();
     let fullGrid, rTots, cTots, finalPuzzle;
     do {
+        finalPuzzle = null;
         fullGrid = generateFullGrid();
         rTots = fullGrid.map(row => row.reduce((a,b) => a+b, 0));
         cTots = Array(SIZE).fill(0).map((_, c) => fullGrid.reduce((sum, row) => sum + row[c], 0));
         if (isValidTotalSet(rTots) && isValidTotalSet(cTots)) {
             let puzzle = fullGrid.map(row => [...row]);
-            finalPuzzle = minimizeDFS(puzzle, getShuffledCoords(), rTots, cTots);
+            let candidate = minimizeDFS(puzzle, getShuffledCoords(), rTots, cTots);
+            // Reject if any clue is trivially deducible
+            if (!hasTrivialClue(candidate, rTots, cTots)) {
+                finalPuzzle = candidate;
+            }
         }
     } while (!finalPuzzle);
     rowTotals = rTots; colTotals = cTots;
