@@ -3,20 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Si-Wei | 四维</title>
+    <title>Burger Mind</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <div class="settings-container">
-    <button id="settings-toggle" onclick="toggleSettings()">⚙️</button>
+    <button id="settings-toggle" onclick="toggleSettings()">
+        <div class="gear-icon">
+            <div class="gear-inner"></div>
+            <div class="gear-tooth"></div>
+            <div class="gear-tooth"></div>
+            <div class="gear-tooth"></div>
+            <div class="gear-tooth"></div>
+        </div>
+    </button>
     <div id="settings-menu" class="hidden">
         <h4>Difficulty</h4>
         <label>
             <input type="radio" name="difficulty" value="normal" checked onchange="setDifficulty('normal')"> Normal
         </label>
         <label>
-            <input type="radio" name="difficulty" value="hard" onchange="setDifficulty('hard')"> Hard (Si-Wei Mode)
+            <input type="radio" name="difficulty" value="hard" onchange="setDifficulty('hard')"> Hard
         </label>
     </div>
 </div>
