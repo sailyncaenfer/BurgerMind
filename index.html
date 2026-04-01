@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Si-Wei | 四维</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="settings-container">
+    <button id="settings-toggle" onclick="toggleSettings()">⚙️</button>
+    <div id="settings-menu" class="hidden">
+        <h4>Difficulty</h4>
+        <label>
+            <input type="radio" name="difficulty" value="normal" checked onchange="setDifficulty('normal')"> Normal
+        </label>
+        <label>
+            <input type="radio" name="difficulty" value="hard" onchange="setDifficulty('hard')"> Hard (Si-Wei Mode)
+        </label>
+    </div>
+</div>
+
+<div id="grid-container">
+    <div class="grid" id="grid"></div>
+</div>
+
+<div class="keypad">
+    <button class="key" onclick="handleInput(1)">1</button>
+    <button class="key" onclick="handleInput(2)">2</button>
+    <button class="key" onclick="handleInput(3)">3</button>
+    <button class="key" onclick="handleInput(4)">4</button>
+    <button class="key key-clear" onclick="handleInput('backspace')">⌫</button>
+</div>
+
+<div class="controls">
+    <button id="btn-pen" class="active-mode" onclick="setMode('pen')">Pen</button>
+    <button id="btn-pencil" onclick="setMode('pencil')">Pencil</button>
+    <button class="btn-action" onclick="undo()">Undo</button>
+    <br>
+    <button class="gen-btn" onclick="generateBasedOnSetting()">New Puzzle</button>
+    <button class="manual-btn" onclick="switchToManual()">Manual</button>
+    <button class="reset-btn" onclick="resetInputs()">Reset</button>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
