@@ -190,8 +190,7 @@ function getPossibleValues(puzzle, targetR, targetC, rTots, cTots) {
 function hasTrivialClue(puzzle, rTots, cTots) {
     for (let r = 0; r < SIZE; r++) {
         for (let c = 0; c < SIZE; c++) {
-            if (puzzle[r][c] === 0) continue;
-            // Check if this clue's value is the only arithmetically valid option
+            // Check every cell — clue or blank — if its value is immediately forced
             const possible = getPossibleValues(puzzle, r, c, rTots, cTots);
             if (possible.size === 1) return true;
         }
