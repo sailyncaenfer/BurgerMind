@@ -23,24 +23,59 @@ function init() {
 }
 
 function handleKeyDown(e) {
+    // 1. Handle Undo (Ctrl + Z)
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
         e.preventDefault();
         undo();
         return;
     }
+    // 2. Handle Mode Toggle (Shift)
     if (e.key === 'Shift') {
         e.preventDefault();
         setMode(mode === 'pen' ? 'pencil' : 'pen');
         return;
     }
+    // 3. Handle Navigation (Arrows)
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+        e.preventDefault();
+        moveSelection(e.key);
+        return;
+    }
+    // 4. Handle Cell Input (1, 2, 3, 4)
     if (['1', '2', '3', '4'].includes(e.key)) {
         handleInput(e.key);
         return;
     }
+    // 5. Handle Clear (Backspace or Space)
     if (e.key === 'Backspace' || e.key === ' ') {
         e.preventDefault();
         handleInput('backspace');
         return;
+    }
+}
+
+function moveSelection(direction) {
+    if (selectedCells.length === 0) {
+        // If nothing is selected, start at the top-left
+        const firstCell = document.getElementById('cell-0-0');
+        if (firstCell) addCellToSelection(firstCell);
+        return;
+    }
+
+    // Use the last selected cell as the pivot for movement
+    const lastCell = selectedCells[selectedCells.length - 1];
+    let r = parseInt(lastCell.dataset.r);
+    let c = parseInt(lastCell.dataset.c);
+
+    if (direction === 'ArrowUp') r = Math.max(0, r - 1);
+    if (direction === 'ArrowDown') r = Math.min(SIZE - 1, r + 1);
+    if (direction === 'ArrowLeft') c = Math.max(0, c - 1);
+    if (direction === 'ArrowRight') c = Math.min(SIZE - 1, c + 1);
+
+    const nextCell = document.getElementById(`cell-${r}-${c}`);
+    if (nextCell) {
+        clearSelection();
+        addCellToSelection(nextCell);
     }
 }
 
