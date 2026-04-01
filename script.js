@@ -18,7 +18,30 @@ function init() {
     generateBasedOnSetting();
     setupDragListeners();
     setupGlobalCancel();
+    window.addEventListener('keydown', handleKeyDown);
     setTimeout(fillBuffer, 1000);
+}
+
+function handleKeyDown(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        undo();
+        return;
+    }
+    if (e.key === 'Shift') {
+        e.preventDefault();
+        setMode(mode === 'pen' ? 'pencil' : 'pen');
+        return;
+    }
+    if (['1', '2', '3', '4'].includes(e.key)) {
+        handleInput(e.key);
+        return;
+    }
+    if (e.key === 'Backspace' || e.key === ' ') {
+        e.preventDefault();
+        handleInput('backspace');
+        return;
+    }
 }
 
 function fillBuffer() {
@@ -327,8 +350,10 @@ function checkGrid() {
 
 function setMode(m) {
     mode = m;
-    document.getElementById('btn-pen').classList.toggle('active-mode', m === 'pen');
-    document.getElementById('btn-pencil').classList.toggle('active-mode', m === 'pencil');
+    const btnPen = document.getElementById('btn-pen');
+    const btnPencil = document.getElementById('btn-pencil');
+    if(btnPen) btnPen.classList.toggle('active-mode', m === 'pen');
+    if(btnPencil) btnPencil.classList.toggle('active-mode', m === 'pencil');
 }
 
 function saveState() {
