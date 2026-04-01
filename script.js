@@ -9,7 +9,7 @@ let historyStack = [];
 let puzzleBuffer = [];
 const BUFFER_MAX = 5;
 const MAX_CLUES_HARD = 3;
-const FORBIDDEN_TOTALS = [4, 5, 15, 16];
+const FORBIDDEN_TOTALS = [4, 5, 6, 7, 13, 14, 15, 16];
 
 const gridElement = document.getElementById("grid");
 
