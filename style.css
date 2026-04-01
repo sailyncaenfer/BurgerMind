@@ -19,6 +19,7 @@ body {
     -webkit-user-select: none;
 }
 
+/* Settings & Gear Icon */
 .settings-container {
     position: absolute;
     top: 15px;
@@ -27,11 +28,56 @@ body {
 }
 
 #settings-toggle {
-    font-size: 28px;
     background: none;
     border: none;
     cursor: pointer;
     padding: 5px;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.gear-icon {
+    position: relative;
+    width: 24px;
+    height: 24px;
+    background: #555;
+    border-radius: 50%;
+}
+
+.gear-inner {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 8px;
+    height: 8px;
+    background: var(--bg-color);
+    border-radius: 50%;
+    z-index: 2;
+}
+
+.gear-tooth {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 28px;
+    height: 6px;
+    background: #555;
+    margin-top: -3px;
+    margin-left: -14px;
+    border-radius: 2px;
+}
+
+.gear-tooth:nth-child(2) { transform: rotate(45deg); }
+.gear-tooth:nth-child(3) { transform: rotate(90deg); }
+.gear-tooth:nth-child(4) { transform: rotate(135deg); }
+
+#settings-toggle:hover .gear-icon,
+#settings-toggle:hover .gear-tooth {
+    background: #222;
 }
 
 #settings-menu {
@@ -50,6 +96,7 @@ body {
 #settings-menu h4 { margin: 10px; font-size: 14px; }
 #settings-menu label { display: flex; align-items: center; gap: 8px; margin: 10px; font-size: 14px; }
 
+/* Grid Layout */
 #grid-container {
     width: 100%;
     display: flex;
@@ -91,12 +138,14 @@ body {
 .green { color: #2e7d32; }
 .red-text { color: #c62828; }
 
+/* Pencil Marks */
 .pencil { position: absolute; width: 100%; height: 100%; font-size: calc(var(--cell-size) * 0.3); color: #666; pointer-events: none; }
 .p1 { position: absolute; top: 2px; left: 50%; transform: translateX(-50%); }
 .p2 { position: absolute; left: 4px; top: 50%; transform: translateY(-50%); }
 .p3 { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); }
 .p4 { position: absolute; bottom: 2px; left: 50%; transform: translateX(-50%); }
 
+/* Controls & Keypad */
 .keypad { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; width: 100%; max-width: 400px; margin: 15px 0; }
 .key { padding: 15px 0; font-size: 20px; font-weight: bold; border: none; border-radius: 8px; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
 .key-clear { background: #ffcdd2; color: #b71c1c; }
