@@ -5,7 +5,10 @@ let mode = "pen";
 let currentDifficulty = "normal";
 let rowTotals = [0, 0, 0, 0];
 let colTotals = [0, 0, 0, 0];
+
 let historyStack = [];
+let redoStack = []; // New Redo Stack
+
 let puzzleBuffer = [];
 const BUFFER_MAX = 5;
 const MAX_CLUES_HARD = 3;
@@ -23,30 +26,32 @@ function init() {
 }
 
 function handleKeyDown(e) {
-    // 1. Handle Undo (Ctrl + Z)
+    // Undo (Ctrl + Z)
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
         e.preventDefault();
         undo();
         return;
     }
-    // 2. Handle Mode Toggle (Shift)
+    // Redo (Ctrl + Y)
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+        e.preventDefault();
+        redo();
+        return;
+    }
     if (e.key === 'Shift') {
         e.preventDefault();
         setMode(mode === 'pen' ? 'pencil' : 'pen');
         return;
     }
-    // 3. Handle Navigation (Arrows)
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
         e.preventDefault();
         moveSelection(e.key);
         return;
     }
-    // 4. Handle Cell Input (1, 2, 3, 4)
     if (['1', '2', '3', '4'].includes(e.key)) {
         handleInput(e.key);
         return;
     }
-    // 5. Handle Clear (Backspace or Space)
     if (e.key === 'Backspace' || e.key === ' ') {
         e.preventDefault();
         handleInput('backspace');
@@ -56,13 +61,10 @@ function handleKeyDown(e) {
 
 function moveSelection(direction) {
     if (selectedCells.length === 0) {
-        // If nothing is selected, start at the top-left
         const firstCell = document.getElementById('cell-0-0');
         if (firstCell) addCellToSelection(firstCell);
         return;
     }
-
-    // Use the last selected cell as the pivot for movement
     const lastCell = selectedCells[selectedCells.length - 1];
     let r = parseInt(lastCell.dataset.r);
     let c = parseInt(lastCell.dataset.c);
@@ -79,6 +81,78 @@ function moveSelection(direction) {
     }
 }
 
+// --- CORE LOGIC ---
+
+function saveState() {
+    const currentState = {
+        rowTotals: [...rowTotals], 
+        colTotals: [...colTotals],
+        cells: Array.from(document.querySelectorAll('.cell')).map(cell => ({
+            val: cell.querySelector(".val").innerText,
+            pencils: Array.from(cell.querySelectorAll(".pencil div")).map(p => p.innerText),
+            locked: cell.classList.contains('locked')
+        }))
+    };
+    historyStack.push(JSON.stringify(currentState));
+    if (historyStack.length > 50) historyStack.shift();
+    
+    // CRITICAL: Clear redo stack when a new action is taken
+    redoStack = [];
+}
+
+function undo() {
+    if (historyStack.length === 0) return;
+    
+    // Save current state to redo stack before moving back
+    const currentState = {
+        rowTotals: [...rowTotals], 
+        colTotals: [...colTotals],
+        cells: Array.from(document.querySelectorAll('.cell')).map(cell => ({
+            val: cell.querySelector(".val").innerText,
+            pencils: Array.from(cell.querySelectorAll(".pencil div")).map(p => p.innerText),
+            locked: cell.classList.contains('locked')
+        }))
+    };
+    redoStack.push(JSON.stringify(currentState));
+
+    const lastState = JSON.parse(historyStack.pop());
+    applyState(lastState);
+}
+
+function redo() {
+    if (redoStack.length === 0) return;
+
+    // Save current state to history stack before moving forward
+    const currentState = {
+        rowTotals: [...rowTotals], 
+        colTotals: [...colTotals],
+        cells: Array.from(document.querySelectorAll('.cell')).map(cell => ({
+            val: cell.querySelector(".val").innerText,
+            pencils: Array.from(cell.querySelectorAll(".pencil div")).map(p => p.innerText),
+            locked: cell.classList.contains('locked')
+        }))
+    };
+    historyStack.push(JSON.stringify(currentState));
+
+    const nextState = JSON.parse(redoStack.pop());
+    applyState(nextState);
+}
+
+function applyState(state) {
+    rowTotals = state.rowTotals; 
+    colTotals = state.colTotals;
+    createGrid(); 
+    const cells = document.querySelectorAll('.cell');
+    state.cells.forEach((data, i) => {
+        cells[i].querySelector(".val").innerText = data.val;
+        if(data.locked) cells[i].classList.add('locked');
+        cells[i].querySelectorAll(".pencil div").forEach((p, pi) => p.innerText = data.pencils[pi]);
+    });
+    checkGrid();
+}
+
+// --- GENERATION & UI ---
+
 function fillBuffer() {
     if (puzzleBuffer.length < BUFFER_MAX) {
         generateMinimalPuzzleAsync((newPuzzle) => {
@@ -94,33 +168,6 @@ function isValidTotalSet(tots) {
     return !tots.some(t => FORBIDDEN_TOTALS.includes(t));
 }
 
-function isTrivial(targetSum, existingNums) {
-    let remainingSum = targetSum - existingNums.reduce((a, b) => a + b, 0);
-    let slotsOpen = 4 - existingNums.length;
-    if (slotsOpen === 0) return false;
-    let combinations = 0;
-    const findCombos = (sum, slots) => {
-        if (slots === 0) { if (sum === 0) combinations++; return; }
-        for (let i = 1; i <= 4; i++) { if (sum - i >= 0) findCombos(sum - i, slots - 1); }
-    };
-    findCombos(remainingSum, slotsOpen);
-    return combinations <= 1;
-}
-
-function hasTrivialStart(grid, rTots, cTots) {
-    for (let r = 0; r < SIZE; r++) {
-        let existing = [];
-        for (let c = 0; c < SIZE; c++) if (grid[r][c] !== 0) existing.push(grid[r][c]);
-        if (isTrivial(rTots[r], existing)) return true;
-    }
-    for (let c = 0; c < SIZE; c++) {
-        let existing = [];
-        for (let r = 0; r < SIZE; r++) if (grid[r][c] !== 0) existing.push(grid[r][c]);
-        if (isTrivial(cTots[c], existing)) return true;
-    }
-    return false;
-}
-
 function generateMinimalPuzzleAsync(callback) {
     setTimeout(() => {
         let fullGrid = generateFullGrid();
@@ -131,7 +178,7 @@ function generateMinimalPuzzleAsync(callback) {
         let finalPuzzle = minimizeDFS(puzzle, getShuffledCoords(), rTots, cTots);
         let clueCount = 0;
         for(let r=0; r<SIZE; r++) for(let c=0; c<SIZE; c++) if(finalPuzzle[r][c] !== 0) clueCount++;
-        if (clueCount <= MAX_CLUES_HARD && !hasTrivialStart(finalPuzzle, rTots, cTots)) {
+        if (clueCount <= MAX_CLUES_HARD) {
             callback({ puzzle: finalPuzzle, rTots, cTots });
         } else {
             generateMinimalPuzzleAsync(callback);
@@ -195,7 +242,7 @@ function generateHardPuzzle() {
             let puzzle = fullGrid.map(row => [...row]);
             finalPuzzle = minimizeDFS(puzzle, getShuffledCoords(), rTots, cTots);
         }
-    } while (!finalPuzzle || hasTrivialStart(finalPuzzle, rTots, cTots));
+    } while (!finalPuzzle);
     rowTotals = rTots; colTotals = cTots;
     renderPuzzle(finalPuzzle);
 }
@@ -389,33 +436,6 @@ function setMode(m) {
     const btnPencil = document.getElementById('btn-pencil');
     if(btnPen) btnPen.classList.toggle('active-mode', m === 'pen');
     if(btnPencil) btnPencil.classList.toggle('active-mode', m === 'pencil');
-}
-
-function saveState() {
-    const currentState = {
-        rowTotals: [...rowTotals], colTotals: [...colTotals],
-        cells: Array.from(document.querySelectorAll('.cell')).map(cell => ({
-            val: cell.querySelector(".val").innerText,
-            pencils: Array.from(cell.querySelectorAll(".pencil div")).map(p => p.innerText),
-            locked: cell.classList.contains('locked')
-        }))
-    };
-    historyStack.push(JSON.stringify(currentState));
-    if (historyStack.length > 30) historyStack.shift();
-}
-
-function undo() {
-    if (historyStack.length === 0) return;
-    const lastState = JSON.parse(historyStack.pop());
-    rowTotals = lastState.rowTotals; colTotals = lastState.colTotals;
-    createGrid(); 
-    const cells = document.querySelectorAll('.cell');
-    lastState.cells.forEach((data, i) => {
-        cells[i].querySelector(".val").innerText = data.val;
-        if(data.locked) cells[i].classList.add('locked');
-        cells[i].querySelectorAll(".pencil div").forEach((p, pi) => p.innerText = data.pencils[pi]);
-    });
-    checkGrid();
 }
 
 function editTotal(el, type, index) {
