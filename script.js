@@ -14,7 +14,7 @@ const BUFFER_MAX = 10;
 // attempts and only ~46% of those are solvable by logic alone (rest require
 // guessing). Capping at 5 gives a ~15x better generation hit-rate while still
 // producing genuinely hard, logic-solvable puzzles.
-const MAX_CLUES_HARD = 2;
+const MAX_CLUES_HARD = 4;
 const FORBIDDEN_TOTALS = [4, 5, 6, 14, 15, 16];
 
 const gridElement = document.getElementById("grid");
